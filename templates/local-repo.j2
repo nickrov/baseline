@@ -1,0 +1,23 @@
+[{{ code_ready_builder }}]
+baseurl=/{{ repo_share_path }}{{ code_ready_builder }}
+name={{ code_ready_builder }}
+gpgcheck=0
+enabled=1
+
+[{{ epel }}]
+baseurl=/{{ repo_share_path }}{{ epel }}
+name={{ epel }}
+gpgcheck=0
+enabled=1
+
+[{{ appstream }}]
+baseurl=/{{ repo_share_path }}{{ appstream }}
+name={{ appstream }}
+gpgcheck=0
+enabled=1
+
+[{{ baseos }}]
+baseurl=/{{ repo_share_path }}{{ baseos }}
+name={{ baseos }}
+gpgcheck=0
+enabled=1

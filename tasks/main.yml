@@ -1,0 +1,158 @@
+---
+# tasks file for baseline
+#
+#
+# -- sudoers tasks
+#
+- name: Ensure the {{ ansible_svc }} service account is permitted to sudo with no password
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/99_{{ ansible_svc }}
+    state: present
+    create: true
+    mode: 0400
+    line: "{{ ansible_svc }} {{ ansible_svc_action }}"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Ensure the {{ domain_admins_group }} service account is permitted sudo with password
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/98_{{ ansible_svc }}
+    state: present
+    create: true
+    mode: 0400
+    line: "{{ domain_admins_group }} {{ domain_admins_group }}"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Ensure general users are able to reboot the local machine
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/11_reboot
+    state: present
+    create: true
+    mode: 0400
+    line: "{{ sudoers_reboot_group }} {{ sudoers_reboot_action }}"
+    validate: /usr/sbin/visudo -cf %s
+#
+# -- realm tasks
+#
+- name: Realm list to check realmd status
+  ansible.builtin.command: realm list
+  register: realm_output.stdout
+
+- name: Show output
+  ansible.builtin.debug:
+    var: realm_output.stdout
+#need comments to specify syntax
+- name: Realm join if client is disjoined from any domain
+  ansible.bulitin.command: realm join -U "{{ username }}@{{ ad_domain|upper }}" {{ ad_domain|upper }}
+  args:
+    stdin: "{{ password }}"
+  register: realm_output2
+  when: ( realm_output.stdout == "" ) and ( realm_check == "y" )
+
+- name: Establish krb5.keytab file for cifs share
+  ansible.builtin.expect:
+    command: ktutil
+    responses:
+      ktutil:
+        - "addent -password -p {{ username }}@{{ ad_domain|upper }} -k 1 -e aes256-cts"
+        - "wkt /etc/krb5.keytab"
+        - "q"
+      Password(.*): "{{ password }}"
+  when: ( realm_output.stdout == "" ) and ( realm_check == "y" )
+#
+# -- fstab configuration tasks
+#
+- name: Create admin share directory if it does not exist
+  ansible.builtin.lineinfile:
+    path: "{{ admin_mount_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Mount admin share persistently via fstab
+  ansible.posix.mount:
+    src: "{{ admin_share }}"
+    path: "{{ admin_mount_path }}"
+    opts: username={{ ansible_svc }},sec=krb5,multiuser,_netdev
+    fstype: cifs
+    state: mounted
+    backup: true
+
+- name: Create repo share directory if it does not exist
+  ansible.builtin.lineinfile:
+    path: "{{ repo_mount_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Mount repo share persistently via fstab
+  ansible.posix.mount:
+    src: "{{ repo_share }}"
+    path: "{{ repo_mount_path }}"
+    opts: username={{ ansible_svc }},sec=krb5,multiuser,_netdev
+    fstype: cifs
+    state: mounted
+    backup: true
+#
+# -- firewalld tasks
+#
+- name: Permit RDP traffic in default zone
+  ansible.posix.firewalld:
+    port: "{{ rdp_port }}"
+    permanent: true
+    zone: public
+    state: enabled
+    immediate: true
+#
+# -- yum.repos.d tasks
+#
+- name: Ensure master yum.repos.d file exists on host
+  ansible.builtin.template:
+    src: {{ yum_template }}
+    dest: /etc/yum.repos.d/local.repo
+    owner: root
+    group: root
+    mode: '0600'
+#
+# -- baseline package tasks
+#
+- name: Ensure cups is uninstalled
+  ansible.builtin.dnf:
+    name: cups
+    state: absent
+
+- name: Ensure {{ rdp_pkg }} is installed
+  ansible.builtin.dnf:
+    name: "{{ rdp_pkg }}"
+    state: latest
+  notify:
+    - xrdp
+
+- name: Ensure {{ classification_banner_pkg }} is installed
+  ansible.builtin.dnf:
+    name: "{{ classification_banner_pkg }}"
+    state: latest
+#
+# -- account management tasks
+#
+- name: Prevent root account & root account password from expiring
+  ansible.builtin.user:
+    name: root
+    password_expire_max: -1
+    expires: -1 
+
+- name: Prevent {{ ansible_svc }} & {{ ansible_svc }} password from expiring
+  ansible.bulitin.user:
+    name: root
+    password_expire_max: -1
+    expires: -1
+#
+# -- fapolicyd tasks
+#
+- name: Permit fapolicyd to operate in permissive mode
+  ansible.builtin.lineinfile:
+    path: /etc/fapolicyd/fapolicyd.conf
+    regex: 'permissive ='
+    line: permissive = 1
+    owner: root
+    group: root
+    mode: '0600'
+  notify:
+    - fapolicyd

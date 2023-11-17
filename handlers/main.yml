@@ -1,0 +1,12 @@
+---
+# handlers file for baseline
+- name: fapolicyd
+  ansible.builtin.service:
+    name: fapolicyd
+    state: restarted
+
+- name: xrdp
+  ansible.builtin.service:
+    name: xrdp
+    state: started
+    enabled: true

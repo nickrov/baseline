@@ -1,0 +1,44 @@
+---
+# -- defaults file for baseline
+#
+#
+# -- vars for sudoers tasks
+#
+ansible_svc: devops
+ansible_svc_action: 'ALL=(ALL) NOPASSWD: ALL'
+domain_admins_group: '%DOMAIN\\Domain\ Administrators'
+domain_admins_action: 
+sudoers_reboot_group: '%DOMAIN\\domain\ users'
+sudoers_reboot_action: 'ALL=(root) /bin/systemctl reboot -i'
+#
+# -- vars for realm tasks
+#
+simple_allow_groups: domain admins, domain issos
+#
+# -- vars for firewalld tasks
+#
+rdp_port: 3389/tcp
+#
+# -- vars for local yum.repos.d configuration
+#
+repo_share_path: '//mnt/repo'
+code_ready_builder: 'codeready-builder-for-rhel-8-x86_64-rpms'
+epel: 'epel'
+appstream: 'rhel-8-for-x86_64-appstream-rpms'
+baseos: 'rhel-8-for-x86_64-baseos-rpms'
+yum_template: './roles/baseline/templates/local-repo.j2'
+#
+# -- vars for package baseline
+#
+rdp_pkg: xrdp
+classification_banner_pkg: gnome-shell-extension-classification-banner.noarch
+#
+# - vars for fstab
+#
+admin_share: '//fs/admin'
+repo_share: '//fs/repo'
+#
+# - vars for mount points
+#
+admin_mount_path: '/mnt/admin'
+repo_mount_path: '/mnt/repo'
