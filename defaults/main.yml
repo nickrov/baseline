@@ -7,7 +7,7 @@
 ansible_svc: devops
 ansible_svc_action: 'ALL=(ALL) NOPASSWD: ALL'
 domain_admins_group: '%DOMAIN\\Domain\ Administrators'
-domain_admins_action: 
+domain_admins_action: 'ALL=(ALL) ALL'
 sudoers_reboot_group: '%DOMAIN\\domain\ users'
 sudoers_reboot_action: 'ALL=(root) /bin/systemctl reboot -i'
 #
